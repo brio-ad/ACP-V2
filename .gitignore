@@ -1,0 +1,10 @@
+dist/
+node_modules/
+vite.stdout.log
+vite.stderr.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json

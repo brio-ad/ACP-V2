@@ -1,0 +1,215 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.375rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-brio-heading: 1.875rem;
+  --text-brio-heading--line-height: 2.375rem;
+  --text-brio-title: 1.125rem;
+  --text-brio-title--line-height: 1.625rem;
+  --color-brio-primary: #ffe11e;
+  --color-brio-primary-hover: #fff353;
+  --color-brio-primary-active: #d8c100;
+  --color-brio-surface: #ffffff;
+  --color-brio-brand-canvas: #faf9eb;
+  --color-brio-hover: #f5f5f5;
+  --color-brio-subtle: #e6e6e6;
+  --color-brio-border: #d6d6d6;
+  --color-brio-ink: #1f1f1f;
+  --color-brio-muted: #666666;
+  --color-brio-success: #17b170;
+  --color-brio-warning: #f29a23;
+  --color-brio-danger: #e21d1d;
+  --color-brio-success-bg: #e6f7ef;
+  --color-brio-warning-bg: #fff4e5;
+  --color-brio-danger-bg: #fdecec;
+  /* Dark semantic text keeps small labels legible on the Brio status surfaces. */
+  --color-brio-success-ink: #126344;
+  --color-brio-warning-ink: #7a4808;
+  --color-brio-danger-ink: #a51616;
+  --color-brio-focus: #756500;
+  --color-canvas: #f8f8f8;
+  /* Existing low-emphasis accents use the same surfaces and readable ink. */
+  --color-accent-50: #f8f8f8;
+  --color-accent-100: #f0f0f0;
+  --color-accent-200: #d6d6d6;
+  --color-accent-500: #756500;
+  --color-accent-600: #1f1f1f;
+  --color-accent-700: #353535;
+  --radius-brio-control: 6px;
+  --radius-brio-panel: 8px;
+  --radius-brio-dialog: 12px;
+  --shadow-brio-overlay: 0 12px 30px rgb(0 0 0 / 12%);
+  --ease-brio: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-sm text-brio-ink antialiased;
+  }
+  ::selection {
+    @apply bg-brio-primary text-brio-ink;
+  }
+}
+
+@layer components {
+  /* Keep shared defaults below utilities so control variants can override them. */
+  .form-control {
+    width: 100%;
+    min-width: 0;
+  }
+  .control-single {
+    height: 2.5rem;
+  }
+  .data-table {
+    width: 100%;
+    text-align: left;
+  }
+  .data-table th,
+  .data-table td {
+    padding-right: 1rem;
+    vertical-align: middle;
+  }
+  .data-table th {
+    white-space: nowrap;
+  }
+  .records-table > thead {
+    @apply border-b border-brio-subtle bg-canvas text-xs text-brio-muted;
+  }
+  .records-viewport > .records-table > thead {
+    @apply sticky top-0 z-10;
+  }
+  .records-table > thead > tr > th {
+    @apply h-11 py-3 font-medium;
+  }
+  .records-table > tbody > tr > td {
+    @apply py-3;
+  }
+  .records-table > :is(thead, tbody) > tr > :first-child {
+    @apply pl-5;
+  }
+  .records-table > :is(thead, tbody) > tr > :last-child {
+    @apply pr-5;
+  }
+  .records-table > tbody {
+    @apply divide-y divide-brio-subtle;
+  }
+  .records-table > tbody > tr {
+    @apply h-16 transition-colors duration-120 ease-brio motion-reduce:transition-none;
+  }
+  .records-table > tbody > tr:hover {
+    @apply bg-brio-hover;
+  }
+  .records-toolbar {
+    @apply border-b border-brio-subtle p-5;
+  }
+}
+
+@layer utilities {
+  @container (width < 54rem) {
+    .customer-table,
+    .customer-table tbody {
+      display: block;
+    }
+    .customer-table thead {
+      @apply sr-only;
+    }
+    .customer-table tbody tr {
+      display: grid;
+      height: auto;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      align-items: start;
+      gap: 0.75rem 1rem;
+      padding: 1rem;
+    }
+    .customer-table tbody tr > td {
+      grid-column: span 1;
+      min-width: 0;
+      padding: 0;
+      text-align: left;
+    }
+    .customer-table tbody tr > td:first-child {
+      grid-column: 1 / -2;
+    }
+    .customer-table tbody tr > td:nth-last-child(2) {
+      grid-column: -2;
+      grid-row: 1;
+      justify-self: end;
+    }
+    .customer-table tbody tr > td:last-child {
+      display: none;
+    }
+    .customer-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.75rem;
+      line-height: 1rem;
+      color: var(--color-brio-muted);
+    }
+  }
+  @container (width < 36rem) {
+    .customer-table tbody tr {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .customer-table tbody tr > td[data-label="Primary contact"],
+    .customer-table tbody tr > td[data-label="Signature coverage"] {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+/* Content inside the signature editor and previews mimics Gmail's defaults. */
+.sig-surface {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  color: #222;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sig-surface a {
+  color: #1a0dab;
+}
+.sig-surface ul {
+  list-style: disc;
+  padding-left: 1.5em;
+}
+.sig-surface ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+}
+.sig-surface img {
+  display: inline-block;
+  max-width: 100%;
+}
+.sig-surface:focus {
+  outline: none;
+}
+.sig-surface:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-toast {
+  animation: toast-in 220ms var(--ease-brio);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast {
+    animation: none;
+  }
+}
