@@ -16,7 +16,14 @@ function Router() {
       return <UserManagementPage />;
     case "customer":
       return (
-        <CustomerDetailPage key={route.id} id={route.id} tab={route.tab} logId={route.logId} />
+        <CustomerDetailPage
+          key={route.id}
+          id={route.id}
+          tab={route.tab}
+          logId={route.logId}
+          recallUserId={route.recallUserId}
+          recallMessageId={route.recallMessageId}
+        />
       );
     case "template":
       return (
@@ -41,7 +48,11 @@ function Gate() {
   const { agent, connected, route } = useStore();
   if (!agent) return <LoginPage />;
   if (route.name !== "setup" && !connected) {
-    return <Shell><Router /></Shell>;
+    return (
+      <Shell>
+        <Router />
+      </Shell>
+    );
   }
   return (
     <Shell>

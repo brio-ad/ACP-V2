@@ -116,6 +116,16 @@ export interface Delegation {
   createdAt: string;
 }
 
+export interface ExternalContact {
+  id: string;
+  customerId: string;
+  name: string;
+  organization: string;
+  email: string;
+  mobile: string;
+  createdAt: string;
+}
+
 export const DEMO_AGENT = {
   name: "Rhea Kapoor",
   email: "agent@workspaceops.io",
@@ -402,7 +412,7 @@ const DRAFT_SIGNATURE_HTML = [
   '<div style="margin-bottom:4px">{{email}} | {{mobile}}</div>',
   '<div style="margin-bottom:8px">{{website}}</div>',
   '<img src="{{companyLogo}}" alt="{{companyName}}" width="140" style="border:0">',
-  '</div>',
+  "</div>",
 ].join("");
 
 export function newTemplate(customerId: string, id = uid("tpl")): Template {
@@ -664,6 +674,7 @@ export interface Seed {
   logs: LogEntry[];
   assignments: Record<string, Record<string, Assignment>>;
   delegations: Delegation[];
+  externalContacts: ExternalContact[];
 }
 
 export function buildSeed(agentEmail: string): Seed {
@@ -773,5 +784,13 @@ export function buildSeed(agentEmail: string): Seed {
   );
 
   logs.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-  return withDemoCustomers({ customers, users, templates, logs, assignments, delegations });
+  return withDemoCustomers({
+    customers,
+    users,
+    templates,
+    logs,
+    assignments,
+    delegations,
+    externalContacts: [],
+  });
 }

@@ -6,15 +6,22 @@ import { Button, Card, EmptyState, Tabs } from "../components/ui";
 import { SignaturesTab } from "./tabs/SignaturesTab";
 import { DelegatesTab } from "./tabs/DelegatesTab";
 import { HistoryTab } from "./tabs/HistoryTab";
+import { EmailRecallDirectory } from "./EmailRecallDirectory";
+import { EmailRecallUser } from "./EmailRecallUser";
+import { AddContactTab } from "./tabs/AddContactTab";
 
 export function CustomerDetailPage({
   id,
   tab = "signatures",
   logId,
+  recallUserId,
+  recallMessageId,
 }: {
   id: string;
   tab?: CustomerTab;
   logId?: string;
+  recallUserId?: string;
+  recallMessageId?: string;
 }) {
   const { navigate } = useStore();
   const scope = useCustomer(id);
@@ -28,13 +35,22 @@ export function CustomerDetailPage({
             icon={<AlertTriangle className="size-5" />}
             title="Workspace not found"
             description="It may have been removed."
-            action={
-              <Button onClick={() => navigate({ name: "setup" })}>Back to setup</Button>
-            }
+            action={<Button onClick={() => navigate({ name: "setup" })}>Back to setup</Button>}
           />
         </Card>
       </div>
     );
+
+  if (tab === "email-recall" && recallUserId) {
+    return (
+      <EmailRecallUser
+        key={recallUserId}
+        userId={recallUserId}
+        workspaceId={id}
+        messageId={recallMessageId}
+      />
+    );
+  }
 
   const ready = { ...scope, customer };
   const active = users.filter((u) => u.status === "active").length;
@@ -92,6 +108,8 @@ export function CustomerDetailPage({
             { value: "forwarding", label: "Forwarding" },
             { value: "vacation", label: "Vacation" },
             { value: "domains", label: "Domains" },
+            { value: "email-recall", label: "Email Recall" },
+            { value: "add-contact", label: "Add contact" },
             { value: "history", label: "History" },
           ]}
         />
@@ -115,7 +133,17 @@ export function CustomerDetailPage({
           ) : tab === "delegates" ? (
             <DelegatesTab scope={ready} />
           ) : tab === "forwarding" || tab === "vacation" || tab === "domains" ? (
-            <Card><EmptyState icon={<PlugZap className="size-5" />} title={`${tab[0].toUpperCase()}${tab.slice(1)} integration needed`} description="This service needs a tenant-scoped backend and verified Google Workspace permissions before it can be managed here." /></Card>
+            <Card>
+              <EmptyState
+                icon={<PlugZap className="size-5" />}
+                title={`${tab[0].toUpperCase()}${tab.slice(1)} integration needed`}
+                description="This service needs a tenant-scoped backend and verified Google Workspace permissions before it can be managed here."
+              />
+            </Card>
+          ) : tab === "email-recall" ? (
+            <EmailRecallDirectory workspaceId={id} />
+          ) : tab === "add-contact" ? (
+            <AddContactTab scope={ready} />
           ) : (
             <HistoryTab key={logId ?? "history"} scope={ready} initialLogId={logId} />
           )}

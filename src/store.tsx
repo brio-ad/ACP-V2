@@ -16,19 +16,41 @@ import {
   type Customer,
   type DirectoryUser,
   type Delegation,
+  type ExternalContact,
   type LogEntry,
   type Seed,
   type Template,
 } from "./data";
+import { clearDemoRecallHistory } from "./emailRecallDemo";
 
-export type CustomerTab = "signatures" | "delegates" | "forwarding" | "vacation" | "domains" | "history";
+export type CustomerTab =
+  | "signatures"
+  | "delegates"
+  | "forwarding"
+  | "vacation"
+  | "domains"
+  | "history"
+  | "email-recall"
+  | "add-contact";
 export type AccessRole = "super-admin" | "admin";
-export interface AccessGrant { email: string; name: string; role: AccessRole; userId?: string }
+export interface AccessGrant {
+  email: string;
+  name: string;
+  role: AccessRole;
+  userId?: string;
+}
 
 export type Route =
   | { name: "setup" }
   | { name: "users" }
-  | { name: "customer"; id: string; tab?: CustomerTab; logId?: string }
+  | {
+      name: "customer";
+      id: string;
+      tab?: CustomerTab;
+      logId?: string;
+      recallUserId?: string;
+      recallMessageId?: string;
+    }
   | { name: "template"; customerId: string; templateId: string }
   | { name: "assign"; customerId: string; templateId?: string };
 
@@ -55,10 +77,16 @@ interface Store {
   accessGrants: AccessGrant[];
   previewWorkspace: () => void;
   verifyConnection: (file: File) => Promise<string | null>;
-  grantAccess: (userId: string, role: AccessRole) => "granted" | "duplicate" | "invalid-user" | "forbidden";
+  grantAccess: (
+    userId: string,
+    role: AccessRole,
+  ) => "granted" | "duplicate" | "invalid-user" | "forbidden";
   addCustomer: (
     details: Pick<Customer, "name" | "domain" | "serviceAccount" | "contactEmail">,
   ) => Customer | null;
+  addExternalContact: (
+    contact: Pick<ExternalContact, "customerId" | "name" | "organization" | "email" | "mobile">,
+  ) => "added" | "duplicate" | "directory" | "invalid";
   saveTemplate: (t: Template) => void;
   deleteTemplate: (id: string) => void;
   commitBatch: (log: LogEntry, changes: BatchCommit) => void;
@@ -72,6 +100,9 @@ const KEY = "brio-customer-portal-test-v1";
 const Ctx = createContext<Store | null>(null);
 
 function scopeSeed(seed: Seed): Seed {
+  const workspaceDomain = seed.customers
+    .find((item) => item.id === WORKSPACE_ID)
+    ?.domain.toLowerCase();
   return {
     customers: seed.customers.filter((item) => item.id === WORKSPACE_ID),
     users: { [WORKSPACE_ID]: seed.users[WORKSPACE_ID] ?? [] },
@@ -79,6 +110,21 @@ function scopeSeed(seed: Seed): Seed {
     logs: seed.logs.filter((item) => item.customerId === WORKSPACE_ID),
     assignments: { [WORKSPACE_ID]: seed.assignments[WORKSPACE_ID] ?? {} },
     delegations: seed.delegations.filter((item) => item.customerId === WORKSPACE_ID),
+    externalContacts: (Array.isArray(seed.externalContacts) ? seed.externalContacts : []).filter(
+      (item) =>
+        item &&
+        item.customerId === WORKSPACE_ID &&
+        typeof item.name === "string" &&
+        typeof item.email === "string" &&
+        typeof item.mobile === "string" &&
+        typeof item.organization === "string" &&
+        (!workspaceDomain ||
+          (item.email.toLowerCase().split("@")[1] !== workspaceDomain &&
+            !item.email.toLowerCase().split("@")[1]?.endsWith(`.${workspaceDomain}`))) &&
+        !seed.users[WORKSPACE_ID]?.some(
+          (user) => user.email.toLowerCase() === item.email.toLowerCase(),
+        ),
+    ),
   };
 }
 
@@ -95,8 +141,12 @@ function load(): { agent: Agent | null; data: Seed | null; accessGrants?: Access
 export function StoreProvider({ children }: { children: ReactNode }) {
   const initial = useMemo(load, []);
   const [agent, setAgent] = useState<Agent | null>(initial.agent);
-  const [data, setData] = useState<Seed>(() => scopeSeed(initial.data ?? buildSeed("admin@brio.co.in")));
-  const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(() => Array.isArray(initial.accessGrants) ? initial.accessGrants : []);
+  const [data, setData] = useState<Seed>(() =>
+    scopeSeed(initial.data ?? buildSeed("admin@brio.co.in")),
+  );
+  const [accessGrants, setAccessGrants] = useState<AccessGrant[]>(() =>
+    Array.isArray(initial.accessGrants) ? initial.accessGrants : [],
+  );
   const [connected, setConnected] = useState(false);
   const [route, setRoute] = useState<Route>({ name: "setup" });
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -122,13 +172,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setAgent(a);
     setRoute({ name: "setup" });
   }, []);
-  const logout = useCallback(() => { setAgent(null); setConnected(false); setRoute({ name: "setup" }); }, []);
+  const logout = useCallback(() => {
+    setAgent(null);
+    setConnected(false);
+    setRoute({ name: "setup" });
+  }, []);
   const ensureFirstSuperAdmin = useCallback(() => {
     if (!agent) return;
     const email = agent.email.toLowerCase();
     const ownerId = `owner:${email}`;
     setData((current) => {
-      if (current.users[WORKSPACE_ID]?.some((user) => user.email.toLowerCase() === email)) return current;
+      if (current.users[WORKSPACE_ID]?.some((user) => user.email.toLowerCase() === email))
+        return current;
       const [firstName, ...rest] = agent.name.split(" ");
       const owner: DirectoryUser = {
         id: ownerId,
@@ -143,51 +198,163 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         location: "",
         status: "active",
       };
-      return { ...current, users: { ...current.users, [WORKSPACE_ID]: [owner, ...(current.users[WORKSPACE_ID] ?? [])] } };
+      return {
+        ...current,
+        users: {
+          ...current.users,
+          [WORKSPACE_ID]: [owner, ...(current.users[WORKSPACE_ID] ?? [])],
+        },
+      };
     });
-    setAccessGrants((current) => current.length ? current : [{ email, name: agent.name, role: "super-admin", userId: ownerId }]);
+    setAccessGrants((current) =>
+      current.length
+        ? current
+        : [{ email, name: agent.name, role: "super-admin", userId: ownerId }],
+    );
   }, [agent]);
-  const previewWorkspace = useCallback(() => { ensureFirstSuperAdmin(); setRoute({ name: "customer", id: WORKSPACE_ID }); }, [ensureFirstSuperAdmin]);
-  const verifyConnection = useCallback(async (file: File): Promise<string | null> => {
-    try {
-      const capabilityResponse = await fetch("/api/workspace/capabilities", { credentials: "same-origin" });
-      if (!capabilityResponse.ok || !capabilityResponse.headers.get("content-type")?.includes("application/json")) {
-        return "Secure connection verification is not configured in this preview. No credentials were uploaded.";
-      }
-      const capabilities: unknown = await capabilityResponse.json();
-      if (!capabilities || typeof capabilities !== "object" || !("credentialUpload" in capabilities) || capabilities.credentialUpload !== true || !("workspaceId" in capabilities) || capabilities.workspaceId !== WORKSPACE_ID) {
-        return "Secure connection verification is not available for this Workspace. No credentials were uploaded.";
-      }
-      const body = new FormData();
-      body.set("credentials", file);
-      const response = await fetch("/api/workspace/connect", { method: "POST", body, credentials: "same-origin" });
-      if (!response.ok) return "Connection verification is unavailable. No credentials were saved. Ask Brio to enable the secure Workspace integration and try again.";
-      const result: unknown = await response.json();
-      if (!result || typeof result !== "object" || !("verified" in result) || result.verified !== true || !("workspaceId" in result) || result.workspaceId !== WORKSPACE_ID) {
-        return "The connection could not be verified for this Workspace. Check the service account permissions and try again.";
-      }
-      setConnected(true);
-      ensureFirstSuperAdmin();
-      setRoute({ name: "customer", id: WORKSPACE_ID });
-      return null;
-    } catch {
-      return "Connection verification is unavailable. No credentials were uploaded. Try again after the secure integration is configured.";
-    }
+  const previewWorkspace = useCallback(() => {
+    ensureFirstSuperAdmin();
+    setRoute({ name: "customer", id: WORKSPACE_ID });
   }, [ensureFirstSuperAdmin]);
-
-  const addCustomer = useCallback<Store["addCustomer"]>(
-    () => null,
-    [],
+  const verifyConnection = useCallback(
+    async (file: File): Promise<string | null> => {
+      try {
+        const capabilityResponse = await fetch("/api/workspace/capabilities", {
+          credentials: "same-origin",
+        });
+        if (
+          !capabilityResponse.ok ||
+          !capabilityResponse.headers.get("content-type")?.includes("application/json")
+        ) {
+          return "Secure connection verification is not configured in this preview. No credentials were uploaded.";
+        }
+        const capabilities: unknown = await capabilityResponse.json();
+        if (
+          !capabilities ||
+          typeof capabilities !== "object" ||
+          !("credentialUpload" in capabilities) ||
+          capabilities.credentialUpload !== true ||
+          !("workspaceId" in capabilities) ||
+          capabilities.workspaceId !== WORKSPACE_ID
+        ) {
+          return "Secure connection verification is not available for this Workspace. No credentials were uploaded.";
+        }
+        const body = new FormData();
+        body.set("credentials", file);
+        const response = await fetch("/api/workspace/connect", {
+          method: "POST",
+          body,
+          credentials: "same-origin",
+        });
+        if (!response.ok)
+          return "Connection verification is unavailable. No credentials were saved. Ask Brio to enable the secure Workspace integration and try again.";
+        const result: unknown = await response.json();
+        if (
+          !result ||
+          typeof result !== "object" ||
+          !("verified" in result) ||
+          result.verified !== true ||
+          !("workspaceId" in result) ||
+          result.workspaceId !== WORKSPACE_ID
+        ) {
+          return "The connection could not be verified for this Workspace. Check the service account permissions and try again.";
+        }
+        setConnected(true);
+        ensureFirstSuperAdmin();
+        setRoute({ name: "customer", id: WORKSPACE_ID });
+        return null;
+      } catch {
+        return "Connection verification is unavailable. No credentials were uploaded. Try again after the secure integration is configured.";
+      }
+    },
+    [ensureFirstSuperAdmin],
   );
 
-  const grantAccess = useCallback<Store["grantAccess"]>((userId, role) => {
-    if (!agent || accessGrants.find((grant) => grant.email === agent.email.toLowerCase())?.role !== "super-admin") return "forbidden";
-    const user = data.users[WORKSPACE_ID]?.find((entry) => entry.id === userId && entry.status === "active");
-    if (!user || !["admin", "super-admin"].includes(role)) return "invalid-user";
-    if (accessGrants.some((grant) => grant.email === user.email.toLowerCase())) return "duplicate";
-    setAccessGrants((current) => [...current, { userId: user.id, email: user.email.toLowerCase(), name: `${user.firstName} ${user.lastName}`, role }]);
-    return "granted";
-  }, [agent, accessGrants, data.users]);
+  const addCustomer = useCallback<Store["addCustomer"]>(() => null, []);
+
+  const addExternalContact = useCallback<Store["addExternalContact"]>(
+    (contact) => {
+      const customer = data.customers.find((item) => item.id === contact.customerId);
+      if (!customer || customer.id !== WORKSPACE_ID) return "invalid";
+      const name = contact.name.trim();
+      const organization = contact.organization.trim();
+      const email = contact.email.trim().toLowerCase();
+      const mobile = contact.mobile.trim();
+      const digits = mobile.replace(/\D/g, "");
+      if (
+        !name ||
+        (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
+        !/^[+\d][\d\s()\-]+$/.test(mobile) ||
+        digits.length < 7 ||
+        digits.length > 15
+      )
+        return "invalid";
+      const domain = email.split("@")[1];
+      if (
+        (email &&
+          (domain === customer.domain.toLowerCase() ||
+            domain.endsWith(`.${customer.domain.toLowerCase()}`))) ||
+        data.users[WORKSPACE_ID]?.some(
+          (user) =>
+            (email && user.email.toLowerCase() === email) ||
+            [user.mobile, user.phone].some((number) => number.replace(/\D/g, "") === digits),
+        )
+      )
+        return "directory";
+      if (
+        data.externalContacts.some(
+          (item) =>
+            item.customerId === customer.id &&
+            ((email && item.email.toLowerCase() === email) ||
+              item.mobile.replace(/\D/g, "") === digits),
+        )
+      )
+        return "duplicate";
+      const created: ExternalContact = {
+        id: uid("contact"),
+        customerId: customer.id,
+        name,
+        organization,
+        email,
+        mobile,
+        createdAt: new Date().toISOString(),
+      };
+      setData((current) => ({
+        ...current,
+        externalContacts: [created, ...current.externalContacts],
+      }));
+      return "added";
+    },
+    [data],
+  );
+
+  const grantAccess = useCallback<Store["grantAccess"]>(
+    (userId, role) => {
+      if (
+        !agent ||
+        accessGrants.find((grant) => grant.email === agent.email.toLowerCase())?.role !==
+          "super-admin"
+      )
+        return "forbidden";
+      const user = data.users[WORKSPACE_ID]?.find(
+        (entry) => entry.id === userId && entry.status === "active",
+      );
+      if (!user || !["admin", "super-admin"].includes(role)) return "invalid-user";
+      if (accessGrants.some((grant) => grant.email === user.email.toLowerCase()))
+        return "duplicate";
+      setAccessGrants((current) => [
+        ...current,
+        {
+          userId: user.id,
+          email: user.email.toLowerCase(),
+          name: `${user.firstName} ${user.lastName}`,
+          role,
+        },
+      ]);
+      return "granted";
+    },
+    [agent, accessGrants, data.users],
+  );
 
   const templateActivity = useCallback(
     (
@@ -266,6 +433,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetDemo = useCallback(() => {
+    clearDemoRecallHistory();
     setData(scopeSeed(buildSeed(agent?.email ?? "admin@brio.co.in")));
     setAccessGrants([]);
     setConnected(false);
@@ -286,6 +454,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       verifyConnection,
       grantAccess,
       addCustomer,
+      addExternalContact,
       saveTemplate,
       deleteTemplate,
       commitBatch,
@@ -306,6 +475,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       verifyConnection,
       grantAccess,
       addCustomer,
+      addExternalContact,
       saveTemplate,
       deleteTemplate,
       commitBatch,
@@ -340,6 +510,7 @@ export function useCustomer(id: string) {
       logs: data.logs.filter((l) => l.customerId === id),
       assignments: data.assignments[id] ?? {},
       delegations: data.delegations.filter((x) => x.customerId === id),
+      externalContacts: data.externalContacts.filter((x) => x.customerId === id),
     };
   }, [data, id, customer, users]);
 }

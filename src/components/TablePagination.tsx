@@ -13,7 +13,7 @@ export function useTablePage<T>(rows: readonly T[], initialRowIndex = 0) {
   const start = (currentPage - 1) * pageSize;
   function changePage(page: number) {
     setPage(page);
-    viewportRef.current?.scrollTo({ top: 0 });
+    viewportRef.current?.scrollTo?.({ top: 0 });
   }
 
   return {
@@ -41,6 +41,7 @@ export function TablePagination({
   total,
   page,
   pageSize,
+  hasMore = false,
   onPageChange,
   autoPageSize,
   onPageSizeChange,
@@ -51,18 +52,24 @@ export function TablePagination({
   total: number;
   page: number;
   pageSize: number;
+  hasMore?: boolean;
   onPageChange: (page: number) => void;
   autoPageSize?: boolean;
   onPageSizeChange?: (size: number) => void;
 }) {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const pages = Math.max(1, Math.ceil(total / pageSize) + (hasMore ? 1 : 0));
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);
   const range = start === end ? String(start) : start + "–" + end;
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 shrink-0 border-t border-brio-subtle px-5 py-3">
       <p role="status" className="text-sm text-brio-muted tabular-nums">
-        {total ? range + " of " + total + " " : "0 "}
+        {total
+          ? (start > total ? `Loading page ${page} · ` : range + " of ") +
+            (hasMore ? "at least " : "") +
+            total +
+            " "
+          : "0 "}
         {total === 1 ? noun : plural}
       </p>
       {(pages > 1 || onPageSizeChange) && (
