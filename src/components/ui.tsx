@@ -404,7 +404,9 @@ export function Modal({
           )}
         >
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-brio-subtle px-4 py-3 sm:px-6">
-            <Dialog.Title className="text-brio-title font-semibold">{title}</Dialog.Title>
+            <Dialog.Title className="min-w-0 text-brio-title font-semibold [overflow-wrap:anywhere]">
+              {title}
+            </Dialog.Title>
             <Dialog.Close asChild>
               <IconButton label="Close">
                 <X className="size-4" />

@@ -140,8 +140,8 @@ test("user details use a full workspace page and return to the Email Recall tab"
   expect(await screen.findByRole("button", { name: "View details" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "View details" }));
   await screen.findByText("Message preview");
-  const details = screen.getByRole("dialog", { name: "Email details" });
-  expect(within(details).getByText("A long message")).toBeTruthy();
+  const details = screen.getByRole("dialog", { name: "A long message" });
+  expect(within(details).getByRole("heading", { name: "Message information" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Alex Smith", hidden: true })).toBeTruthy();
   expect(screen.getByRole("table", { name: "Sent emails", hidden: true })).toBeTruthy();
   expect(mocks.navigate).toHaveBeenCalledWith(
@@ -150,7 +150,7 @@ test("user details use a full workspace page and return to the Email Recall tab"
   );
   fireEvent.click(within(details).getAllByRole("button", { name: "Close" })[0]);
   expect(screen.getByRole("heading", { name: "Alex Smith" })).toBeTruthy();
-  expect(screen.queryByRole("dialog", { name: "Email details" })).toBeNull();
+  expect(screen.queryByRole("dialog", { name: "A long message" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Back to Email Recall" }));
   expect(screen.getByRole("tab", { name: "Email Recall" }).getAttribute("aria-selected")).toBe(
     "true",
@@ -202,9 +202,11 @@ test("sent date filters the API and full details keep unavailable BCC distinct",
   );
   fireEvent.click(screen.getByRole("button", { name: "View details" }));
   await screen.findByText("proposal.pdf");
-  const detail = screen.getByRole("dialog", { name: "Email details" });
+  const detail = screen.getByRole("dialog", { name: "A long message" });
   expect(mocks.api.email).toHaveBeenCalledWith("u1", "m1");
   expect(within(detail).getByText("To")).toBeTruthy();
+  expect(within(detail).getByText("From").parentElement?.className).toContain("border");
+  expect(within(detail).getByText("To").parentElement?.className).toContain("border");
   expect(within(detail).getByText("Cc")).toBeTruthy();
   expect(within(detail).getByText("Bcc")).toBeTruthy();
   expect(within(detail).getByText("copy@example.com")).toBeTruthy();
@@ -232,7 +234,7 @@ test("message details keep long recipient and attachment lists in one labeled di
   render(<EmailRecallUser userId="u1" />);
   fireEvent.click(await screen.findByRole("button", { name: "View details" }));
   await screen.findByText("project-file-17.pdf");
-  const dialog = screen.getByRole("dialog", { name: "Email details" });
+  const dialog = screen.getByRole("dialog", { name: "A long message" });
   expect(within(dialog).getByRole("region", { name: "Recipients" })).toBeTruthy();
   expect(within(dialog).getByRole("region", { name: "Message preview" })).toBeTruthy();
   expect(within(dialog).getByRole("region", { name: "Attachments" })).toBeTruthy();
@@ -312,6 +314,7 @@ test("recall requires an Other reason and shows only API returned outcomes", asy
   mocks.api.recall.mockResolvedValue(record);
   render(<EmailRecallWorkflow userId="u1" email={email} onClose={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Recall Email" }));
+  expect(screen.getByRole("dialog", { name: "A long message" })).toBeTruthy();
   await waitFor(() => expect(document.activeElement?.textContent).toBe("Review recall request"));
   expect(
     screen.getByText(/Recall is an attempt to move eligible internal mailbox copies/),
@@ -326,9 +329,8 @@ test("recall requires an Other reason and shows only API returned outcomes", asy
     target: { value: "correction" },
   });
   fireEvent.click(submit);
-  expect(
-    await screen.findByRole("heading", { name: "Recall processing and results" }),
-  ).toBeTruthy();
+  expect(await screen.findByRole("heading", { name: "Recall outcome" })).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "A long message" })).toBeTruthy();
   await waitFor(() => expect(document.activeElement?.textContent).toBe("Recall outcome"));
   expect(mocks.api.recall).toHaveBeenCalledTimes(1);
   expect(mocks.api.recall).toHaveBeenCalledWith("u1", "m1", "Other: correction");

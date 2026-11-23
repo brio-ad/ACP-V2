@@ -387,11 +387,17 @@ export function EmailRecallUser({
           />
         )}
       </Card>
-      {detailTarget && (!messageId || detailTarget.id === messageId) && (
-        selectedEmail ? (
+      {detailTarget &&
+        (!messageId || detailTarget.id === messageId) &&
+        (selectedEmail ? (
           <EmailRecallWorkflow userId={userId} email={selectedEmail} onClose={closeDetails} />
         ) : (
-          <Modal open onClose={closeDetails} title="Email details" width="max-w-2xl">
+          <Modal
+            open
+            onClose={closeDetails}
+            title={detailTarget.subject || "(No subject)"}
+            width="max-w-2xl"
+          >
             {detailLoading && <p role="status">Loading message details…</p>}
             {detailError && (
               <ErrorNotice
@@ -400,8 +406,7 @@ export function EmailRecallUser({
               />
             )}
           </Modal>
-        )
-      )}
+        ))}
     </div>
   );
 }

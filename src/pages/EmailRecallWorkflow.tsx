@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type Ref } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from "react";
 import { Paperclip } from "lucide-react";
 import { type RecallRecord, type SentEmail } from "../emailRecallApi";
 import { useEmailRecallClient } from "../emailRecallDemo";
@@ -29,26 +29,32 @@ function attachmentSize(bytes?: number) {
   return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(amount)} ${units[unit]}`;
 }
 
-function RecipientRow({ label, values }: { label: string; values?: string[] }) {
+function DetailBox({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-3 py-2 first:pt-0 last:pb-0 sm:grid-cols-[4rem_minmax(0,1fr)]">
+    <div className="min-w-0 rounded-brio-control border border-brio-subtle p-3 sm:p-4">
       <dt className="font-medium text-brio-muted">{label}</dt>
-      <dd className="min-w-0">
-        {values === undefined ? (
-          <span className="text-brio-muted">Unavailable</span>
-        ) : values.length ? (
-          <ul className="space-y-1">
-            {values.map((value, index) => (
-              <li className="break-all" key={`${value}-${index}`}>
-                {value}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <span className="text-brio-muted">None</span>
-        )}
-      </dd>
+      <dd className="mt-1 min-w-0">{children}</dd>
     </div>
+  );
+}
+
+function RecipientBox({ label, values }: { label: string; values?: string[] }) {
+  return (
+    <DetailBox label={label}>
+      {values === undefined ? (
+        <span className="text-brio-muted">Unavailable</span>
+      ) : values.length ? (
+        <ul className="space-y-1">
+          {values.map((value, index) => (
+            <li className="break-all" key={`${value}-${index}`}>
+              {value}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <span className="text-brio-muted">None</span>
+      )}
+    </DetailBox>
   );
 }
 
@@ -59,32 +65,37 @@ function MessageOverview({
   email: SentEmail;
   subjectRef?: Ref<HTMLHeadingElement>;
 }) {
+  const informationId = useId();
   const recipientsId = useId();
   return (
     <div className="space-y-5">
-      <header className="space-y-3">
+      <section aria-labelledby={informationId} className="space-y-3">
         <h3
+          id={informationId}
           ref={subjectRef}
           tabIndex={-1}
-          className="break-words rounded-brio-control text-base font-semibold text-brio-ink focus:outline-2 focus:outline-offset-2 focus:outline-brio-focus"
+          className="rounded-brio-control font-semibold text-brio-ink focus:outline-2 focus:outline-offset-2 focus:outline-brio-focus"
         >
-          {email.subject || "(No subject)"}
+          Message information
         </h3>
-        <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[4rem_minmax(0,1fr)]">
-          <dt className="font-medium text-brio-muted">From</dt>
-          <dd className="min-w-0 break-all">{email.sender}</dd>
-          <dt className="font-medium text-brio-muted">Sent</dt>
-          <dd>{dateTime(email.sentAt)}</dd>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          <DetailBox label="From">
+            <span className="break-all">{email.sender}</span>
+          </DetailBox>
+          <DetailBox label="Sent">{dateTime(email.sentAt)}</DetailBox>
         </dl>
-      </header>
-      <section aria-labelledby={recipientsId} className="border-t border-brio-subtle pt-4">
-        <h4 id={recipientsId} className="mb-3 font-semibold text-brio-ink">
+      </section>
+      <section
+        aria-labelledby={recipientsId}
+        className="space-y-3 border-t border-brio-subtle pt-5"
+      >
+        <h3 id={recipientsId} className="font-semibold text-brio-ink">
           Recipients
-        </h4>
-        <dl className="divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle px-3 py-1 sm:px-4">
-          <RecipientRow label="To" values={email.to} />
-          <RecipientRow label="Cc" values={email.cc} />
-          <RecipientRow label="Bcc" values={email.bcc} />
+        </h3>
+        <dl className="grid gap-3">
+          <RecipientBox label="To" values={email.to} />
+          <RecipientBox label="Cc" values={email.cc} />
+          <RecipientBox label="Bcc" values={email.bcc} />
         </dl>
       </section>
     </div>
@@ -96,26 +107,29 @@ function MessageContent({ email }: { email: SentEmail }) {
   const attachmentsId = useId();
   return (
     <>
-      <section aria-labelledby={previewId} className="border-t border-brio-subtle pt-4">
-        <h4 id={previewId} className="font-semibold text-brio-ink">
+      <section aria-labelledby={previewId} className="space-y-3 border-t border-brio-subtle pt-5">
+        <h3 id={previewId} className="font-semibold text-brio-ink">
           Message preview
-        </h4>
-        <p className="mt-2 whitespace-pre-wrap break-words rounded-brio-control border border-brio-subtle bg-brio-hover p-3 [overflow-wrap:anywhere]">
+        </h3>
+        <p className="whitespace-pre-wrap break-words rounded-brio-control border border-brio-subtle bg-brio-hover p-3 sm:p-4 [overflow-wrap:anywhere]">
           {email.bodyText || email.snippet || "No message preview available."}
         </p>
       </section>
-      <section aria-labelledby={attachmentsId} className="border-t border-brio-subtle pt-4">
-        <h4 id={attachmentsId} className="font-semibold text-brio-ink">
+      <section
+        aria-labelledby={attachmentsId}
+        className="space-y-3 border-t border-brio-subtle pt-5"
+      >
+        <h3 id={attachmentsId} className="font-semibold text-brio-ink">
           Attachments
-        </h4>
+        </h3>
         {email.attachments?.length ? (
-          <ul className="mt-2 divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle">
+          <ul className="divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle">
             {email.attachments.map((item, index) => {
               const size = attachmentSize(item.size);
               return (
                 <li
                   key={`${item.name}-${index}`}
-                  className="flex min-w-0 items-start gap-2 px-3 py-2"
+                  className="flex min-w-0 items-start gap-2 p-3 sm:p-4"
                 >
                   <Paperclip
                     aria-hidden="true"
@@ -128,7 +142,7 @@ function MessageContent({ email }: { email: SentEmail }) {
             })}
           </ul>
         ) : (
-          <p className="mt-2 text-brio-muted">
+          <p className="rounded-brio-control border border-brio-subtle p-3 text-brio-muted sm:p-4">
             {email.hasAttachments ? "Attachments present; names unavailable" : "No attachments"}
           </p>
         )}
@@ -284,12 +298,7 @@ export function EmailRecallWorkflow({
   const close = () => {
     if (!submitting) onClose();
   };
-  const title =
-    stage === "details"
-      ? "Email details"
-      : stage === "confirm"
-        ? "Confirm email recall"
-        : "Recall processing and results";
+  const title = email.subject || "(No subject)";
   return (
     <Modal
       open
@@ -368,12 +377,12 @@ export function EmailRecallWorkflow({
             {stage === "details" ? (
               <MessageContent email={email} />
             ) : (
-              <div className="space-y-4 border-t border-brio-subtle pt-4">
+              <div className="space-y-5 border-t border-brio-subtle pt-5">
                 <div className="flex flex-wrap gap-2">
                   <Badge tone="blue">{email.internalCount} internal</Badge>
                   <Badge tone="amber">{email.externalCount} external</Badge>
                 </div>
-                <p className="rounded-brio-control bg-brio-warning-bg p-3 text-brio-warning-ink">
+                <p className="rounded-brio-control bg-brio-warning-bg p-3 text-brio-warning-ink sm:p-4">
                   {isDemo
                     ? "Demo preview: this recall only simulates recipient outcomes. No mailbox is changed."
                     : "Recall is an attempt to move eligible internal mailbox copies to Trash. It cannot be guaranteed for every recipient."}
@@ -398,7 +407,7 @@ export function EmailRecallWorkflow({
                 {submitError && (
                   <p
                     role="alert"
-                    className="rounded-brio-control bg-brio-danger-bg p-3 text-brio-danger-ink"
+                    className="rounded-brio-control bg-brio-danger-bg p-3 text-brio-danger-ink sm:p-4"
                   >
                     {submitError}
                   </p>
