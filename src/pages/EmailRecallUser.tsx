@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Paperclip } from "lucide-react";
+import { ArrowLeft, ChevronRight, Paperclip } from "lucide-react";
 import { type SentEmail, type WorkspaceUser } from "../emailRecallApi";
 import { useEmailRecallClient } from "../emailRecallDemo";
 import { useStore } from "../store";
@@ -296,27 +296,14 @@ export function EmailRecallUser({
                   <th>BCC</th>
                   <th>Recipient Type</th>
                   <th>Attachments</th>
-                  <th>Action</th>
+                  <th scope="col" className="w-16">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {visibleEmails.map((email) => (
-                  <tr
-                    key={email.id}
-                    className="cursor-pointer focus-within:bg-brio-hover focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brio-focus"
-                    tabIndex={0}
-                    onClick={() => void openEmail(email)}
-                    onKeyDown={(event) => {
-                      if (
-                        event.target === event.currentTarget &&
-                        (event.key === "Enter" || event.key === " ")
-                      ) {
-                        event.preventDefault();
-                        void openEmail(email);
-                      }
-                    }}
-                    aria-label={`Open ${email.subject || "untitled message"}`}
-                  >
+                  <tr key={email.id}>
                     <td className="max-w-52 truncate font-medium" title={email.subject}>
                       {email.subject || "(No subject)"}
                     </td>
@@ -341,12 +328,12 @@ export function EmailRecallUser({
                     <td>
                       <Button
                         size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void openEmail(email);
-                        }}
+                        variant="ghost"
+                        className="w-8 px-0"
+                        aria-label={`Open details for ${email.subject || "untitled message"}`}
+                        onClick={() => void openEmail(email)}
                       >
-                        View details
+                        <ChevronRight aria-hidden="true" className="size-4" />
                       </Button>
                     </td>
                   </tr>

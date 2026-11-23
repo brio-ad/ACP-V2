@@ -138,8 +138,11 @@ test("user details use a full workspace page and return to the Email Recall tab"
   expect(screen.getByRole("button", { name: "Back to Email Recall" }).textContent).toBe("");
   expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
   expect(screen.queryByRole("combobox", { name: "Recipient type" })).toBeNull();
-  expect(await screen.findByRole("button", { name: "View details" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "View details" }));
+  expect(screen.getByRole("columnheader", { name: "Action" })).toBeTruthy();
+  expect(
+    await screen.findByRole("button", { name: "Open details for A long message" }),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Open details for A long message" }));
   await screen.findByText("Message preview");
   const details = screen.getByRole("dialog", { name: "A long message" });
   expect(within(details).getByRole("heading", { name: "Message information" })).toBeTruthy();
@@ -191,7 +194,7 @@ test("sent date filters the API and full details keep unavailable BCC distinct",
     attachments: [{ name: "proposal.pdf", size: 24000 }],
   });
   render(<EmailRecallUser userId="u1" />);
-  await screen.findAllByRole("button", { name: "View details" });
+  await screen.findAllByRole("button", { name: /^Open details for / });
   fireEvent.change(screen.getByLabelText("Sent date"), {
     target: { value: "2026-11-20" },
   });
@@ -201,7 +204,7 @@ test("sent date filters the API and full details keep unavailable BCC distinct",
       expect.objectContaining({ after: "2026-11-20", before: "2026-11-20", pageToken: undefined }),
     ),
   );
-  fireEvent.click(screen.getByRole("button", { name: "View details" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open details for A long message" }));
   await screen.findByText("proposal.pdf");
   const detail = screen.getByRole("dialog", { name: "A long message" });
   expect(mocks.api.email).toHaveBeenCalledWith("u1", "m1");
@@ -233,7 +236,7 @@ test("message details keep long recipient and attachment lists in one labeled di
     bodyText: "A detailed update.\n".repeat(60),
   });
   render(<EmailRecallUser userId="u1" />);
-  fireEvent.click(await screen.findByRole("button", { name: "View details" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Open details for A long message" }));
   await screen.findByText("project-file-17.pdf");
   const dialog = screen.getByRole("dialog", { name: "A long message" });
   expect(within(dialog).getByRole("region", { name: "Recipients" })).toBeTruthy();
@@ -253,7 +256,7 @@ test("sent pagination fetches more messages without a load-more button", async (
   expect(screen.queryByRole("button", { name: "Load 10 More" })).toBeNull();
   fireEvent.click(nextPage);
   await screen.findByText("Second message");
-  expect(screen.getAllByRole("button", { name: "View details" })).toHaveLength(2);
+  expect(screen.getAllByRole("button", { name: /^Open details for / })).toHaveLength(2);
   expect(mocks.api.sent).toHaveBeenLastCalledWith(
     "u1",
     expect.objectContaining({ pageToken: "next" }),
@@ -269,13 +272,13 @@ test("sent table shows ten messages by default", async () => {
     })),
   });
   render(<EmailRecallUser userId="u1" />);
-  await screen.findAllByRole("button", { name: "View details" });
-  expect(screen.getAllByRole("button", { name: "View details" })).toHaveLength(10);
+  await screen.findAllByRole("button", { name: /^Open details for / });
+  expect(screen.getAllByRole("button", { name: /^Open details for / })).toHaveLength(10);
   expect(screen.getByRole("navigation", { name: "Sent email pagination" })).toBeTruthy();
   fireEvent.change(screen.getByRole("combobox", { name: "Rows per page" }), {
     target: { value: "25" },
   });
-  expect(screen.getAllByRole("button", { name: "View details" })).toHaveLength(12);
+  expect(screen.getAllByRole("button", { name: /^Open details for / })).toHaveLength(12);
 });
 
 test("increasing rows per page fetches enough server pages", async () => {
@@ -286,13 +289,13 @@ test("increasing rows per page fetches enough server pages", async () => {
     .mockResolvedValueOnce({ items: second });
   render(<EmailRecallUser userId="u1" />);
   await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: "View details" })).toHaveLength(10),
+    expect(screen.getAllByRole("button", { name: /^Open details for / })).toHaveLength(10),
   );
   fireEvent.change(screen.getByRole("combobox", { name: "Rows per page" }), {
     target: { value: "25" },
   });
   await waitFor(() =>
-    expect(screen.getAllByRole("button", { name: "View details" })).toHaveLength(15),
+    expect(screen.getAllByRole("button", { name: /^Open details for / })).toHaveLength(15),
   );
   expect(mocks.api.sent).toHaveBeenLastCalledWith(
     "u1",
