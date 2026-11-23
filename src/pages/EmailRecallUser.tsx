@@ -3,7 +3,7 @@ import { ArrowLeft, Paperclip } from "lucide-react";
 import { type SentEmail, type WorkspaceUser } from "../emailRecallApi";
 import { useEmailRecallClient } from "../emailRecallDemo";
 import { useStore } from "../store";
-import { Button, Card, IconButton, Input, SearchInput } from "../components/ui";
+import { Button, Card, IconButton, Input, Modal, SearchInput } from "../components/ui";
 import { EmailRecallWorkflow } from "./EmailRecallWorkflow";
 import { RecordsTable, RecordsViewport } from "../components/RecordsTable";
 import { TablePagination } from "../components/TablePagination";
@@ -231,56 +231,6 @@ export function EmailRecallUser({
     setDetailLoading(false);
   }
 
-  if (detailTarget && (!messageId || detailTarget.id === messageId)) {
-    return (
-      <div className="flex min-h-min min-w-0 flex-1 flex-col gap-4">
-        <nav
-          aria-label="Breadcrumb"
-          className="flex flex-wrap items-center gap-2 text-sm text-brio-muted"
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              navigate(
-                { name: "customer", id: workspaceId, tab: "email-recall" },
-                { preserveScroll: true },
-              )
-            }
-          >
-            Email Recall
-          </Button>
-          <span aria-hidden="true">/</span>
-          <Button variant="ghost" size="sm" onClick={closeDetails}>
-            Sent Emails
-          </Button>
-          <span aria-hidden="true">/</span>
-          <span className="min-w-0 truncate text-brio-ink" aria-current="page">
-            {detailTarget.subject || "(No subject)"}
-          </span>
-        </nav>
-        {detailLoading && (
-          <Card>
-            <p role="status" className="p-5 text-sm text-brio-muted">
-              Loading message details…
-            </p>
-          </Card>
-        )}
-        {detailError && (
-          <Card className="p-5">
-            <ErrorNotice
-              message={`Message details: ${detailError}`}
-              retry={() => void openEmail(detailTarget)}
-            />
-          </Card>
-        )}
-        {selectedEmail && (
-          <EmailRecallWorkflow userId={userId} email={selectedEmail} onClose={closeDetails} />
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-min min-w-0 flex-1 flex-col">
       <Card className="@container flex min-h-min min-w-0 flex-1 flex-col overflow-hidden">
@@ -437,6 +387,21 @@ export function EmailRecallUser({
           />
         )}
       </Card>
+      {detailTarget && (!messageId || detailTarget.id === messageId) && (
+        selectedEmail ? (
+          <EmailRecallWorkflow userId={userId} email={selectedEmail} onClose={closeDetails} />
+        ) : (
+          <Modal open onClose={closeDetails} title="Email details" width="max-w-2xl">
+            {detailLoading && <p role="status">Loading message details…</p>}
+            {detailError && (
+              <ErrorNotice
+                message={`Message details: ${detailError}`}
+                retry={() => void openEmail(detailTarget)}
+              />
+            )}
+          </Modal>
+        )
+      )}
     </div>
   );
 }

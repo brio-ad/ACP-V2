@@ -139,14 +139,18 @@ test("user details use a full workspace page and return to the Email Recall tab"
   expect(screen.queryByRole("combobox", { name: "Recipient type" })).toBeNull();
   expect(await screen.findByRole("button", { name: "View details" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "View details" }));
-  expect(await screen.findByRole("heading", { name: "Email details" })).toBeTruthy();
+  await screen.findByText("Message preview");
+  const details = screen.getByRole("dialog", { name: "Email details" });
+  expect(within(details).getByText("A long message")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Alex Smith", hidden: true })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "Sent emails", hidden: true })).toBeTruthy();
   expect(mocks.navigate).toHaveBeenCalledWith(
     expect.objectContaining({ tab: "email-recall", recallUserId: "u1", recallMessageId: "m1" }),
     { preserveScroll: true },
   );
-  expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Sent Emails" }));
+  fireEvent.click(within(details).getAllByRole("button", { name: "Close" })[0]);
   expect(screen.getByRole("heading", { name: "Alex Smith" })).toBeTruthy();
+  expect(screen.queryByRole("dialog", { name: "Email details" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Back to Email Recall" }));
   expect(screen.getByRole("tab", { name: "Email Recall" }).getAttribute("aria-selected")).toBe(
     "true",
@@ -180,6 +184,11 @@ test("history loads matching operation details from the API", async () => {
 });
 
 test("sent date filters the API and full details keep unavailable BCC distinct", async () => {
+  mocks.api.email.mockResolvedValue({
+    ...email,
+    cc: ["copy@example.com"],
+    attachments: [{ name: "proposal.pdf", size: 24000 }],
+  });
   render(<EmailRecallUser userId="u1" />);
   await screen.findAllByRole("button", { name: "View details" });
   fireEvent.change(screen.getByLabelText("Sent date"), {
@@ -192,11 +201,18 @@ test("sent date filters the API and full details keep unavailable BCC distinct",
     ),
   );
   fireEvent.click(screen.getByRole("button", { name: "View details" }));
-  const detail = await screen.findByRole("heading", { name: "Email details" });
+  await screen.findByText("proposal.pdf");
+  const detail = screen.getByRole("dialog", { name: "Email details" });
   expect(mocks.api.email).toHaveBeenCalledWith("u1", "m1");
-  expect(detail.closest(".bg-brio-surface")).toBeTruthy();
-  expect(screen.getByText("Unavailable")).toBeTruthy();
-  expect(screen.getByText("<script>window.bad = true</script>")).toBeTruthy();
+  expect(within(detail).getByText("To")).toBeTruthy();
+  expect(within(detail).getByText("Cc")).toBeTruthy();
+  expect(within(detail).getByText("Bcc")).toBeTruthy();
+  expect(within(detail).getByText("copy@example.com")).toBeTruthy();
+  expect(within(detail).getByText("Unavailable")).toBeTruthy();
+  expect(within(detail).getByText("Message preview")).toBeTruthy();
+  expect(within(detail).getByText("<script>window.bad = true</script>")).toBeTruthy();
+  expect(within(detail).getByText("Attachments")).toBeTruthy();
+  expect(within(detail).getByText("proposal.pdf")).toBeTruthy();
   expect(document.querySelector("script")).toBeNull();
 });
 

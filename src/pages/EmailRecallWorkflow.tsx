@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { Paperclip } from "lucide-react";
 import { type RecallRecord, type SentEmail } from "../emailRecallApi";
 import { useEmailRecallClient } from "../emailRecallDemo";
-import { Badge, Button, Card, Field, Select, Textarea } from "../components/ui";
-import { RecordsHeading } from "../components/RecordsTable";
+import { Badge, Button, Field, Modal, Select, Textarea } from "../components/ui";
 
 const reasons = [
   "Sent in error",
@@ -170,18 +170,47 @@ export function EmailRecallWorkflow({
         ? "Confirm email recall"
         : "Recall processing and results";
   return (
-    <Card className="flex min-h-min min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="records-toolbar">
-        <RecordsHeading
-          title={title}
-          description={
-            stage === "report"
-              ? "Review the outcome of this recall attempt."
-              : "Review the message and eligible recipients before recalling it."
-          }
-        />
-      </div>
-      <div className="min-w-0 flex-1 space-y-4 p-5">
+    <Modal
+      open
+      onClose={close}
+      title={title}
+      width="max-w-2xl"
+      footer={
+        stage === "report" ? (
+          <Button onClick={close}>Close</Button>
+        ) : (
+          <>
+            <Button
+              disabled={submitting}
+              onClick={
+                stage === "confirm"
+                  ? () => {
+                      setSubmitError("");
+                      setStage("details");
+                    }
+                  : close
+              }
+            >
+              {stage === "confirm" ? "Back" : "Close"}
+            </Button>
+            {stage === "details" ? (
+              <Button variant="danger" onClick={() => setStage("confirm")}>
+                Recall Email
+              </Button>
+            ) : (
+              <Button
+                variant="danger"
+                disabled={submitting || !reason || (reason === "Other" && !other.trim())}
+                onClick={() => void submit()}
+              >
+                {submitting ? "Submitting…" : "Confirm recall"}
+              </Button>
+            )}
+          </>
+        )
+      }
+    >
+      <div className="min-w-0 space-y-5">
         {stage === "report" && record ? (
           <div className="space-y-4">
             <Report record={record} />
@@ -201,39 +230,48 @@ export function EmailRecallWorkflow({
             )}
           </div>
         ) : (
-          <div className="space-y-4 text-sm">
-            <div>
-              <p className="break-words font-semibold">{email.subject || "(No subject)"}</p>
-              <p className="mt-1 text-brio-muted">Sent {dateTime(email.sentAt)}</p>
-              <p className="break-all text-brio-muted">From {email.sender}</p>
+          <div className="space-y-5 text-sm">
+            <div className="space-y-2">
+              <h3 className="break-words text-base font-semibold text-brio-ink">
+                {email.subject || "(No subject)"}
+              </h3>
+              <dl className="grid gap-x-4 gap-y-1 text-brio-muted sm:grid-cols-[5rem_1fr]">
+                <dt>From</dt>
+                <dd className="break-all text-brio-ink">{email.sender}</dd>
+                <dt>Sent</dt>
+                <dd className="text-brio-ink">{dateTime(email.sentAt)}</dd>
+              </dl>
             </div>
             <div className="grid gap-4 border-t border-brio-subtle pt-4 sm:grid-cols-3">
               <RecipientList label="To" values={email.to} />
-              <RecipientList label="CC" values={email.cc} />
-              <RecipientList label="BCC" values={email.bcc} />
+              <RecipientList label="Cc" values={email.cc} />
+              <RecipientList label="Bcc" values={email.bcc} />
             </div>
             {stage === "details" ? (
               <>
-                <div className="border-t border-brio-subtle pt-4">
-                  <p className="font-medium">Message preview</p>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-brio-muted">
+                <section className="border-t border-brio-subtle pt-4" aria-label="Message preview">
+                  <h4 className="font-medium text-brio-ink">Message preview</h4>
+                  <p className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-brio-control border border-brio-subtle bg-brio-hover p-3 text-brio-ink">
                     {email.bodyText || email.snippet || "No message preview available."}
                   </p>
-                </div>
-                <div>
-                  <p className="font-medium">Attachments</p>
+                </section>
+                <section aria-label="Attachments">
+                  <h4 className="font-medium text-brio-ink">Attachments</h4>
                   {email.attachments?.length ? (
-                    <ul className="mt-1 space-y-1 break-all">
+                    <ul className="mt-2 divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle">
                       {email.attachments.map((item, index) => (
-                        <li key={`${item.name}-${index}`}>{item.name}</li>
+                        <li key={`${item.name}-${index}`} className="flex items-start gap-2 px-3 py-2">
+                          <Paperclip aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brio-muted" />
+                          <span className="min-w-0 break-all">{item.name}</span>
+                        </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-brio-muted">
+                    <p className="mt-1 text-brio-muted">
                       {email.hasAttachments ? "Present; names unavailable" : "None"}
                     </p>
                   )}
-                </div>
+                </section>
               </>
             ) : (
               <div className="space-y-4 border-t border-brio-subtle pt-4">
@@ -276,40 +314,6 @@ export function EmailRecallWorkflow({
           </div>
         )}
       </div>
-      <div className="flex flex-wrap justify-end gap-2 border-t border-brio-subtle px-5 py-3">
-        {stage === "report" ? (
-          <Button onClick={close}>Close</Button>
-        ) : (
-          <>
-            <Button
-              disabled={submitting}
-              onClick={
-                stage === "confirm"
-                  ? () => {
-                      setSubmitError("");
-                      setStage("details");
-                    }
-                  : close
-              }
-            >
-              {stage === "confirm" ? "Back" : "Close"}
-            </Button>
-            {stage === "details" ? (
-              <Button variant="danger" onClick={() => setStage("confirm")}>
-                Recall Email
-              </Button>
-            ) : (
-              <Button
-                variant="danger"
-                disabled={submitting || !reason || (reason === "Other" && !other.trim())}
-                onClick={() => void submit()}
-              >
-                {submitting ? "Submitting…" : "Confirm recall"}
-              </Button>
-            )}
-          </>
-        )}
-      </div>
-    </Card>
+    </Modal>
   );
 }
