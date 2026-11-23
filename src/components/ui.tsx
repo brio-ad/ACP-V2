@@ -525,7 +525,7 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label="Workspace tools"
-      className="isolate grid w-full min-w-0 grid-cols-2 border-b border-brio-border @min-[36rem]:grid-cols-4 @min-[62rem]:grid-cols-8"
+      className="isolate flex max-w-full flex-wrap border-b border-brio-border"
     >
       {tabs.map((t) => {
         const on = t.value === value;
@@ -554,10 +554,10 @@ export function Tabs<T extends string>({
               document.getElementById(`customer-tab-${tab}`)?.focus();
             }}
             className={cx(
-              "relative flex min-h-11 min-w-0 items-center justify-center rounded-t-brio-control border border-transparent border-b-2 px-2 py-2 text-center text-xs leading-4 font-medium transition-colors duration-120 ease-brio focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brio-focus motion-reduce:transition-none @min-[36rem]:px-3 @min-[36rem]:text-sm",
+              "relative -mb-px flex min-h-10 min-w-max flex-none items-center justify-center rounded-t-brio-control border border-transparent border-b-2 px-3 py-2 text-xs font-medium transition-colors duration-120 ease-brio focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brio-focus motion-reduce:transition-none @min-[30rem]:px-5 @min-[30rem]:text-sm",
               on
                 ? "border-t-brio-subtle border-r-brio-subtle border-b-brio-primary border-l-brio-subtle bg-brio-surface font-semibold text-brio-ink"
-                : "border-b-brio-border text-brio-muted hover:bg-brio-hover hover:text-brio-ink",
+                : "text-brio-muted before:absolute before:inset-y-3 before:left-0 before:w-px before:bg-brio-border first:before:hidden hover:border-b-brio-border hover:bg-brio-hover hover:text-brio-ink",
             )}
           >
             {t.label}
