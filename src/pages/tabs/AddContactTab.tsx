@@ -42,14 +42,14 @@ export function AddContactTab({ scope }: { scope: CustomerScope }) {
         result === "directory"
           ? "This email belongs to the workspace directory. Find this person in User Management."
           : result === "duplicate"
-            ? "An external contact with this email or mobile number already exists."
+            ? "A shared contact with this email or mobile number already exists."
             : "Enter a name, an optional valid external email, and a mobile number with 7–15 digits.",
       );
       return;
     }
     setOpen(false);
     resetPage();
-    toast("External contact added");
+    toast("Shared contact added");
   }
 
   return (
@@ -58,15 +58,15 @@ export function AddContactTab({ scope }: { scope: CustomerScope }) {
         <div className="records-toolbar flex shrink-0 flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <RecordsHeading
-              title="External contacts"
+              title="Shared Contacts"
               description="Keep client points of contact here. Directory users are available in User Management."
             />
             <Button variant="primary" icon={<Plus className="size-4" />} onClick={showForm}>
-              Add contact
+              Add shared contact
             </Button>
           </div>
           <SearchInput
-            label="Search external contacts"
+            label="Search shared contacts"
             placeholder="Search name, organization, email, or mobile"
             value={query}
             onChange={(event) => {
@@ -78,7 +78,7 @@ export function AddContactTab({ scope }: { scope: CustomerScope }) {
         </div>
         {contacts.length ? (
           <RecordsViewport ref={viewportRef} fill>
-            <RecordsTable aria-label="External contacts" className="table-fixed">
+            <RecordsTable aria-label="Shared contacts" className="table-fixed">
               <thead>
                 <tr>
                   <th scope="col">Name</th>
@@ -127,30 +127,30 @@ export function AddContactTab({ scope }: { scope: CustomerScope }) {
         ) : (
           <EmptyState
             icon={<ContactRound className="size-5" />}
-            title={externalContacts.length ? "No matching contacts" : "No external contacts yet"}
+            title={externalContacts.length ? "No matching contacts" : "No shared contacts yet"}
             description={
               externalContacts.length
                 ? "Try a different search."
                 : "Add a client point of contact to keep their mobile number close at hand."
             }
             action={
-              !externalContacts.length ? <Button onClick={showForm}>Add contact</Button> : undefined
+              !externalContacts.length ? <Button onClick={showForm}>Add shared contact</Button> : undefined
             }
           />
         )}
         {contacts.length > 0 && (
-          <TablePagination label="External contact pagination" noun="contact" {...pagination} />
+          <TablePagination label="Shared contact pagination" noun="contact" {...pagination} />
         )}
       </Card>
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Add external contact"
+        title="Add shared contact"
         footer={
           <>
             <Button onClick={() => setOpen(false)}>Cancel</Button>
             <Button variant="primary" type="submit" form="external-contact-form">
-              Add contact
+              Add shared contact
             </Button>
           </>
         }

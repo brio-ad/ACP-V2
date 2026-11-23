@@ -109,7 +109,7 @@ export function CustomerDetailPage({
             { value: "vacation", label: "Vacation" },
             { value: "domains", label: "Domains" },
             { value: "email-recall", label: "Email Recall" },
-            { value: "add-contact", label: "Add contact" },
+            { value: "add-contact", label: "Shared Contacts" },
             { value: "history", label: "History" },
           ]}
         />
