@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type Ref } from "react";
 import { Paperclip } from "lucide-react";
 import { type RecallRecord, type SentEmail } from "../emailRecallApi";
 import { useEmailRecallClient } from "../emailRecallDemo";
@@ -17,30 +17,144 @@ function dateTime(value: string) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
-function RecipientList({ label, values }: { label: string; values?: string[] }) {
+function attachmentSize(bytes?: number) {
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return null;
+  const units = ["B", "KB", "MB", "GB"];
+  let amount = bytes;
+  let unit = 0;
+  while (amount >= 1024 && unit < units.length - 1) {
+    amount /= 1024;
+    unit++;
+  }
+  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(amount)} ${units[unit]}`;
+}
+
+function RecipientRow({ label, values }: { label: string; values?: string[] }) {
   return (
-    <div className="min-w-0">
-      <p className="font-medium">{label}</p>
-      {values === undefined ? (
-        <p className="text-brio-muted">Unavailable</p>
-      ) : values.length ? (
-        <ul className="mt-1 space-y-1 break-all">
-          {values.map((value, index) => (
-            <li key={`${value}-${index}`}>{value}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-brio-muted">None</p>
-      )}
+    <div className="grid min-w-0 grid-cols-[3rem_minmax(0,1fr)] gap-3 py-2 first:pt-0 last:pb-0 sm:grid-cols-[4rem_minmax(0,1fr)]">
+      <dt className="font-medium text-brio-muted">{label}</dt>
+      <dd className="min-w-0">
+        {values === undefined ? (
+          <span className="text-brio-muted">Unavailable</span>
+        ) : values.length ? (
+          <ul className="space-y-1">
+            {values.map((value, index) => (
+              <li className="break-all" key={`${value}-${index}`}>
+                {value}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="text-brio-muted">None</span>
+        )}
+      </dd>
     </div>
   );
 }
 
-function Report({ record }: { record: RecallRecord }) {
+function MessageOverview({
+  email,
+  subjectRef,
+}: {
+  email: SentEmail;
+  subjectRef?: Ref<HTMLHeadingElement>;
+}) {
+  const recipientsId = useId();
+  return (
+    <div className="space-y-5">
+      <header className="space-y-3">
+        <h3
+          ref={subjectRef}
+          tabIndex={-1}
+          className="break-words rounded-brio-control text-base font-semibold text-brio-ink focus:outline-2 focus:outline-offset-2 focus:outline-brio-focus"
+        >
+          {email.subject || "(No subject)"}
+        </h3>
+        <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[4rem_minmax(0,1fr)]">
+          <dt className="font-medium text-brio-muted">From</dt>
+          <dd className="min-w-0 break-all">{email.sender}</dd>
+          <dt className="font-medium text-brio-muted">Sent</dt>
+          <dd>{dateTime(email.sentAt)}</dd>
+        </dl>
+      </header>
+      <section aria-labelledby={recipientsId} className="border-t border-brio-subtle pt-4">
+        <h4 id={recipientsId} className="mb-3 font-semibold text-brio-ink">
+          Recipients
+        </h4>
+        <dl className="divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle px-3 py-1 sm:px-4">
+          <RecipientRow label="To" values={email.to} />
+          <RecipientRow label="Cc" values={email.cc} />
+          <RecipientRow label="Bcc" values={email.bcc} />
+        </dl>
+      </section>
+    </div>
+  );
+}
+
+function MessageContent({ email }: { email: SentEmail }) {
+  const previewId = useId();
+  const attachmentsId = useId();
+  return (
+    <>
+      <section aria-labelledby={previewId} className="border-t border-brio-subtle pt-4">
+        <h4 id={previewId} className="font-semibold text-brio-ink">
+          Message preview
+        </h4>
+        <p className="mt-2 whitespace-pre-wrap break-words rounded-brio-control border border-brio-subtle bg-brio-hover p-3 [overflow-wrap:anywhere]">
+          {email.bodyText || email.snippet || "No message preview available."}
+        </p>
+      </section>
+      <section aria-labelledby={attachmentsId} className="border-t border-brio-subtle pt-4">
+        <h4 id={attachmentsId} className="font-semibold text-brio-ink">
+          Attachments
+        </h4>
+        {email.attachments?.length ? (
+          <ul className="mt-2 divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle">
+            {email.attachments.map((item, index) => {
+              const size = attachmentSize(item.size);
+              return (
+                <li
+                  key={`${item.name}-${index}`}
+                  className="flex min-w-0 items-start gap-2 px-3 py-2"
+                >
+                  <Paperclip
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0 text-brio-muted"
+                  />
+                  <span className="min-w-0 break-all">{item.name}</span>
+                  {size && <span className="ml-auto shrink-0 text-brio-muted">{size}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-2 text-brio-muted">
+            {email.hasAttachments ? "Attachments present; names unavailable" : "No attachments"}
+          </p>
+        )}
+      </section>
+    </>
+  );
+}
+
+function Report({
+  record,
+  headingRef,
+}: {
+  record: RecallRecord;
+  headingRef: Ref<HTMLHeadingElement>;
+}) {
   const counts = { successful: 0, failed: 0, skipped: 0 };
   for (const result of record.results) counts[result.status]++;
   return (
     <div className="space-y-4 text-sm">
+      <h3
+        ref={headingRef}
+        tabIndex={-1}
+        className="rounded-brio-control text-base font-semibold text-brio-ink focus:outline-2 focus:outline-offset-2 focus:outline-brio-focus"
+      >
+        Recall outcome
+      </h3>
       <div className="space-y-1">
         <p className="font-semibold break-words">{record.subject || "(No subject)"}</p>
         <p className="break-all text-brio-muted">
@@ -67,7 +181,7 @@ function Report({ record }: { record: RecallRecord }) {
         <p role="status">Recall is processing. Results update as the service checks recipients.</p>
       )}
       {record.results.length ? (
-        <ul className="max-h-64 divide-y divide-brio-subtle overflow-y-auto">
+        <ul className="divide-y divide-brio-subtle">
           {record.results.map((result, index) => (
             <li
               key={`${result.email}-${index}`}
@@ -116,6 +230,13 @@ export function EmailRecallWorkflow({
   const [pollError, setPollError] = useState("");
   const [record, setRecord] = useState<RecallRecord | null>(null);
   const submitLock = useRef(false);
+  const stageHeading = useRef<HTMLHeadingElement>(null);
+  const previousStage = useRef(stage);
+
+  useEffect(() => {
+    if (previousStage.current !== stage) stageHeading.current?.focus();
+    previousStage.current = stage;
+  }, [stage]);
 
   async function refreshRecord(id: string) {
     try {
@@ -213,7 +334,7 @@ export function EmailRecallWorkflow({
       <div className="min-w-0 space-y-5">
         {stage === "report" && record ? (
           <div className="space-y-4">
-            <Report record={record} />
+            <Report record={record} headingRef={stageHeading} />
             {pollError && (
               <div
                 role="alert"
@@ -231,48 +352,21 @@ export function EmailRecallWorkflow({
           </div>
         ) : (
           <div className="space-y-5 text-sm">
-            <div className="space-y-2">
-              <h3 className="break-words text-base font-semibold text-brio-ink">
-                {email.subject || "(No subject)"}
+            {stage === "confirm" && (
+              <h3
+                ref={stageHeading}
+                tabIndex={-1}
+                className="rounded-brio-control text-base font-semibold text-brio-ink focus:outline-2 focus:outline-offset-2 focus:outline-brio-focus"
+              >
+                Review recall request
               </h3>
-              <dl className="grid gap-x-4 gap-y-1 text-brio-muted sm:grid-cols-[5rem_1fr]">
-                <dt>From</dt>
-                <dd className="break-all text-brio-ink">{email.sender}</dd>
-                <dt>Sent</dt>
-                <dd className="text-brio-ink">{dateTime(email.sentAt)}</dd>
-              </dl>
-            </div>
-            <div className="grid gap-4 border-t border-brio-subtle pt-4 sm:grid-cols-3">
-              <RecipientList label="To" values={email.to} />
-              <RecipientList label="Cc" values={email.cc} />
-              <RecipientList label="Bcc" values={email.bcc} />
-            </div>
+            )}
+            <MessageOverview
+              email={email}
+              subjectRef={stage === "details" ? stageHeading : undefined}
+            />
             {stage === "details" ? (
-              <>
-                <section className="border-t border-brio-subtle pt-4" aria-label="Message preview">
-                  <h4 className="font-medium text-brio-ink">Message preview</h4>
-                  <p className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap break-words rounded-brio-control border border-brio-subtle bg-brio-hover p-3 text-brio-ink">
-                    {email.bodyText || email.snippet || "No message preview available."}
-                  </p>
-                </section>
-                <section aria-label="Attachments">
-                  <h4 className="font-medium text-brio-ink">Attachments</h4>
-                  {email.attachments?.length ? (
-                    <ul className="mt-2 divide-y divide-brio-subtle rounded-brio-control border border-brio-subtle">
-                      {email.attachments.map((item, index) => (
-                        <li key={`${item.name}-${index}`} className="flex items-start gap-2 px-3 py-2">
-                          <Paperclip aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brio-muted" />
-                          <span className="min-w-0 break-all">{item.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-1 text-brio-muted">
-                      {email.hasAttachments ? "Present; names unavailable" : "None"}
-                    </p>
-                  )}
-                </section>
-              </>
+              <MessageContent email={email} />
             ) : (
               <div className="space-y-4 border-t border-brio-subtle pt-4">
                 <div className="flex flex-wrap gap-2">

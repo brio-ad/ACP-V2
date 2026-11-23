@@ -216,6 +216,31 @@ test("sent date filters the API and full details keep unavailable BCC distinct",
   expect(document.querySelector("script")).toBeNull();
 });
 
+test("message details keep long recipient and attachment lists in one labeled dialog", async () => {
+  const manyRecipients = Array.from({ length: 24 }, (_, index) => `recipient-${index}@example.com`);
+  const manyAttachments = Array.from({ length: 18 }, (_, index) => ({
+    name: `project-file-${index}.pdf`,
+    size: 24000,
+  }));
+  mocks.api.email.mockResolvedValue({
+    ...email,
+    to: manyRecipients,
+    bcc: [],
+    attachments: manyAttachments,
+    bodyText: "A detailed update.\n".repeat(60),
+  });
+  render(<EmailRecallUser userId="u1" />);
+  fireEvent.click(await screen.findByRole("button", { name: "View details" }));
+  await screen.findByText("project-file-17.pdf");
+  const dialog = screen.getByRole("dialog", { name: "Email details" });
+  expect(within(dialog).getByRole("region", { name: "Recipients" })).toBeTruthy();
+  expect(within(dialog).getByRole("region", { name: "Message preview" })).toBeTruthy();
+  expect(within(dialog).getByRole("region", { name: "Attachments" })).toBeTruthy();
+  expect(within(dialog).getByText("recipient-23@example.com")).toBeTruthy();
+  expect(within(dialog).getByText("project-file-17.pdf")).toBeTruthy();
+  expect(within(dialog).queryByText("No attachments")).toBeNull();
+});
+
 test("sent pagination fetches more messages without a load-more button", async () => {
   mocks.api.sent
     .mockResolvedValueOnce({ items: [email], nextPageToken: "next" })
@@ -287,6 +312,7 @@ test("recall requires an Other reason and shows only API returned outcomes", asy
   mocks.api.recall.mockResolvedValue(record);
   render(<EmailRecallWorkflow userId="u1" email={email} onClose={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Recall Email" }));
+  await waitFor(() => expect(document.activeElement?.textContent).toBe("Review recall request"));
   expect(
     screen.getByText(/Recall is an attempt to move eligible internal mailbox copies/),
   ).toBeTruthy();
@@ -303,6 +329,7 @@ test("recall requires an Other reason and shows only API returned outcomes", asy
   expect(
     await screen.findByRole("heading", { name: "Recall processing and results" }),
   ).toBeTruthy();
+  await waitFor(() => expect(document.activeElement?.textContent).toBe("Recall outcome"));
   expect(mocks.api.recall).toHaveBeenCalledTimes(1);
   expect(mocks.api.recall).toHaveBeenCalledWith("u1", "m1", "Other: correction");
   expect(screen.getByText("Moved to Trash")).toBeTruthy();
