@@ -76,10 +76,11 @@ test("directory sends filters, appends unique users, and opens the dedicated pag
     .mockResolvedValueOnce({ items: [user], nextPageToken: "p2" })
     .mockResolvedValueOnce({ items: [user, { ...user, id: "u2", name: "Taylor" }] });
   render(<EmailRecallDirectory />);
-  await screen.findByRole("button", { name: "Alex Smith" });
+  await screen.findByRole("button", { name: "Open Alex Smith" });
+  expect(screen.getByRole("columnheader", { name: "Action" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Load more users" }));
-  await screen.findByRole("button", { name: "Taylor" });
-  expect(screen.getAllByRole("button", { name: "Alex Smith" })).toHaveLength(1);
+  await screen.findByRole("button", { name: "Open Taylor" });
+  expect(screen.getAllByRole("button", { name: "Open Alex Smith" })).toHaveLength(1);
   expect(mocks.api.users).toHaveBeenLastCalledWith(expect.objectContaining({ pageToken: "p2" }));
   fireEvent.change(screen.getByRole("combobox", { name: "Account status" }), {
     target: { value: "active" },
@@ -89,7 +90,7 @@ test("directory sends filters, appends unique users, and opens the dedicated pag
       expect.objectContaining({ status: "active", pageToken: undefined }),
     ),
   );
-  fireEvent.click(screen.getByRole("button", { name: "Alex Smith" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open Alex Smith" }));
   expect(mocks.navigate).toHaveBeenCalledWith({
     name: "customer",
     id: "c_brio",
@@ -129,7 +130,7 @@ test("user details use a full workspace page and return to the Email Recall tab"
   ).toContain("bg-brio-surface");
   expect(screen.queryByRole("button", { name: "Recall history" })).toBeNull();
   expect(screen.queryByText(/sample messages and simulated recalls only/)).toBeNull();
-  fireEvent.click(await screen.findByRole("button", { name: "Alex Smith" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Open Alex Smith" }));
   expect(screen.queryByRole("tablist", { name: "Workspace tools" })).toBeNull();
   expect(screen.queryByText("Directory")).toBeNull();
   expect(await screen.findByRole("heading", { name: "Alex Smith" })).toBeTruthy();

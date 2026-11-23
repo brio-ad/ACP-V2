@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MailSearch } from "lucide-react";
+import { ChevronRight, MailSearch } from "lucide-react";
 import type { WorkspaceUser } from "../emailRecallApi";
 import { useEmailRecallClient } from "../emailRecallDemo";
 import { RecordsHeading, RecordsTable, RecordsViewport } from "../components/RecordsTable";
@@ -136,7 +136,7 @@ export function EmailRecallDirectory({ workspaceId = "c_brio" }: { workspaceId?:
       )}
       {users.length > 0 && (
         <RecordsViewport ref={viewportRef} fill>
-          <RecordsTable aria-label="Email Recall users" className="min-w-[720px]">
+          <RecordsTable aria-label="Email Recall users" className="min-w-[800px]">
             <thead>
               <tr>
                 <th>Name</th>
@@ -144,19 +144,16 @@ export function EmailRecallDirectory({ workspaceId = "c_brio" }: { workspaceId?:
                 <th>Organizational unit</th>
                 <th>Department</th>
                 <th>Account status</th>
+                <th scope="col" className="w-16">
+                  Action
+                </th>
               </tr>
             </thead>
             <tbody>
               {visibleRows.map((user) => (
                 <tr key={user.id}>
                   <td>
-                    <Button
-                      variant="ghost"
-                      className="max-w-52 justify-start truncate px-0 font-medium"
-                      onClick={() => openUser(user.id)}
-                    >
-                      {user.name || "—"}
-                    </Button>
+                    <span className="font-medium text-brio-ink">{user.name || "—"}</span>
                   </td>
                   <td className="break-all">{user.primaryEmail || "—"}</td>
                   <td>{user.orgUnit || "—"}</td>
@@ -173,6 +170,17 @@ export function EmailRecallDirectory({ workspaceId = "c_brio" }: { workspaceId?:
                     >
                       {user.status}
                     </Badge>
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="w-8 px-0"
+                      aria-label={`Open ${user.name || user.primaryEmail || "user"}`}
+                      onClick={() => openUser(user.id)}
+                    >
+                      <ChevronRight aria-hidden="true" className="size-4" />
+                    </Button>
                   </td>
                 </tr>
               ))}
